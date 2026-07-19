@@ -1,0 +1,59 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+
+    --bg:#FAF7F2;
+    --bg-secondary:#F2EDE4;
+
+    --card:#FFFFFF;
+
+    --primary:#2D6A4F;
+    --primary-hover:#1B4332;
+
+    --primary-light:#D8F3DC;
+
+    --accent:#E76F51;
+
+    --gold:#F4A261;
+
+    --text:#1A1A1A;
+
+    --text-secondary:#4A4A4A;
+
+    --border:#E8E0D5;
+
+    --danger:#C0392B;
+
+    --success:#059669;
+
+    --radius:20px;
+
+    --shadow:
+        0 8px 30px rgba(45,106,79,.08);
+
+}
+
+body{
+
+    margin:0;
+
+    background:var(--bg);
+
+    color:var(--text);
+
+    font-family:'Inter',sans-serif;
+
+}
+
+h1,h2,h3{
+
+    font-family:'DM Serif Display',serif;
+
+}
+
+*{
+
+    box-sizing:border-box;
+
+}
