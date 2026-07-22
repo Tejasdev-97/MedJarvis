@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import CreatePatientModal from "../components/patients/CreatePatientModal";
 
 export default function PatientsPage() {
+    const navigate = useNavigate();
 
     const [patients, setPatients] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -213,16 +215,14 @@ export default function PatientsPage() {
                         <div className="flex gap-3 mt-6">
 
                             <button
+                                onClick={() => navigate(`/patient-summary/${patient._id}`)}
                                 className="flex-1 bg-[#2D6A4F] text-white rounded-xl py-2"
                             >
                                 View
                             </button>
 
                             <button
-                                onClick={() =>
-                                    window.location.href =
-                                        "/health-card"
-                                }
+                                onClick={() => navigate(`/health-card/${patient._id}`)}
                                 className="flex-1 border border-[#2D6A4F] text-[#2D6A4F] rounded-xl py-2"
                             >
                                 Health Card

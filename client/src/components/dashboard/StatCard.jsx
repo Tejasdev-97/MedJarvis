@@ -51,18 +51,14 @@ export default function StatCard({
                 <div
                     className="rounded-2xl p-3"
                     style={{
-
                         background: `${color}15`
-
                     }}
                 >
 
                     <Icon
                         size={28}
                         style={{
-
                             color
-
                         }}
                     />
 

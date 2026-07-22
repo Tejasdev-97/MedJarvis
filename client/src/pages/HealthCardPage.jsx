@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
     Download,
     HeartPulse,
@@ -14,6 +15,7 @@ import {
 import api from "../services/api";
 
 export default function HealthCardPage() {
+    const { patientId } = useParams();
 
     const [loading, setLoading] = useState(true);
     const [patient, setPatient] = useState(null);
@@ -26,44 +28,33 @@ export default function HealthCardPage() {
 
     async function loadCard() {
 
-        try {
+    try {
 
-            const profile = JSON.parse(
-                localStorage.getItem("profile") || "{}"
-            );
+        const url = patientId
+    ? `/health-card/${patientId}`
+    : "/health-card/me";
 
-            if (!profile.patient?._id && !profile.patient) {
-                setError("No patient linked to this profile.");
-                setLoading(false);
-                return;
-            }
+const res = await api.get(url);
 
-            const patientId =
-                profile.patient?._id || profile.patient;
+        setPatient(res.data.patient);
+        setCard(res.data.card);
 
-            const res = await api.get(
-                `/health-card/${patientId}`
-            );
+    } catch (err) {
 
-            setPatient(res.data.patient);
-            setCard(res.data.card);
+        console.error(err);
 
-        } catch (err) {
+        setError(
+            err.response?.data?.message ||
+            "Unable to load Health Card."
+        );
 
-            console.error(err);
+    } finally {
 
-            setError(
-                err.response?.data?.message ||
-                "Unable to load Health Card."
-            );
-
-        } finally {
-
-            setLoading(false);
-
-        }
+        setLoading(false);
 
     }
+
+}
 
     async function downloadPDF() {
 
