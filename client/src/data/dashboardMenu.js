@@ -21,7 +21,7 @@ export const dashboardMenus = {
         { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
         { label: "My Health", icon: HeartPulse, path: "/vitals" },
         { label: "Health Card", icon: QrCode, path: "/health-card" },
-        { label: "Medical History", icon: ClipboardList, path: "/patients" },
+        { label: "Medical History", icon: ClipboardList, path: "/medical-history" },
         { label: "Prescriptions", icon: FileText, path: "/prescriptions" },
         { label: "AI Health Summary", icon: Brain, path: "/ai" },
         { label: "Emergency", icon: Ambulance, path: "/emergency" },

@@ -11,7 +11,7 @@ import {
 } from "react-router-dom";
 
 import DashboardLayout from "../layouts/DashboardLayout";
-
+import MyHealthPage from "../pages/MyHealthPage";
 import LandingPage from "../pages/LandingPage";
 import LoginPage from "../pages/LoginPage";
 import DashboardPage from "../pages/DashboardPage";
@@ -53,89 +53,89 @@ export default function AppRouter() {
                 />
 
                 <Route
-    path="/profiles"
-    element={<ProfileSelectionPage />}
-/>
+                    path="/profiles"
+                    element={<ProfileSelectionPage />}
+                />
 
-<Route
-    element={
-        <ProtectedRoute>
-            <DashboardLayout />
-        </ProtectedRoute>
-    }
->
-    <Route
-        path="/dashboard"
-        element={<DashboardPage />}
-    />
+                <Route
+                    element={
+                        <ProtectedRoute>
+                            <DashboardLayout />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route
+                        path="/dashboard"
+                        element={<DashboardPage />}
+                    />
 
-    <Route
-        path="/patients"
-        element={<PatientsPage />}
-    />
+                    <Route
+                        path="/patients"
+                        element={<PatientsPage />}
+                    />
 
-    <Route
-        path="/scan-patient"
-        element={<ScanPatientPage />}
-    />
+                    <Route
+                        path="/scan-patient"
+                        element={<ScanPatientPage />}
+                    />
 
-    <Route
-    path="/add-prescription/:patientId"
-    element={<AddPrescriptionPage />}
-/>
+                    <Route
+                        path="/add-prescription/:patientId"
+                        element={<AddPrescriptionPage />}
+                    />
 
-    <Route
-    path="/patient-summary/:patientId"
-    element={<PatientSummaryPage />}
-/>
+                    <Route
+                        path="/patient-summary/:patientId"
+                        element={<PatientSummaryPage />}
+                    />
 
-    <Route
-        path="/health-card"
-        element={<HealthCardPage />}
-    />
+                    <Route
+                        path="/health-card"
+                        element={<HealthCardPage />}
+                    />
 
-    <Route
-    path="/users"
-    element={<UsersPage />}
-/>
+                    <Route
+                        path="/users"
+                        element={<UsersPage />}
+                    />
 
-<Route path="/hospitals" element={<ComingSoonPage />} />
+                    <Route path="/hospitals" element={<ComingSoonPage />} />
 
-<Route path="/audit" element={<ComingSoonPage />} />
+                    <Route path="/audit" element={<ComingSoonPage />} />
 
-<Route
+                    <Route
 
-    path="/settings"
+                        path="/settings"
 
-    element={<SettingsPage />}
+                        element={<SettingsPage />}
 
-/>
+                    />
 
-<Route path="/departments" element={<ComingSoonPage />} />
+                    <Route path="/departments" element={<ComingSoonPage />} />
 
-<Route path="/staff" element={<ComingSoonPage />} />
+                    <Route path="/staff" element={<ComingSoonPage />} />
 
-<Route path="/reports" element={<ComingSoonPage />} />
+                    <Route path="/reports" element={<ComingSoonPage />} />
 
-<Route path="/consultations" element={<ComingSoonPage />} />
+                    <Route path="/consultations" element={<ComingSoonPage />} />
 
-<Route path="/prescriptions" element={<ComingSoonPage />} />
+                    <Route path="/prescriptions" element={<ComingSoonPage />} />
 
-<Route path="/appointments" element={<ComingSoonPage />} />
+                    <Route path="/appointments" element={<ComingSoonPage />} />
 
-<Route path="/villages" element={<ComingSoonPage />} />
+                    <Route path="/villages" element={<ComingSoonPage />} />
 
-<Route path="/vitals" element={<ComingSoonPage />} />
+                    <Route path="/vitals" element={<MyHealthPage />} />
 
-<Route path="/emergency" element={<ComingSoonPage />} />
+                    <Route path="/emergency" element={<ComingSoonPage />} />
 
-<Route path="/ai" element={<ComingSoonPage />} />
+                    <Route path="/ai" element={<ComingSoonPage />} />
 
-    <Route
-        path="/health-card/:patientId"
-        element={<HealthCardPage />}
-    />
-</Route>
+                    <Route
+                        path="/health-card/:patientId"
+                        element={<HealthCardPage />}
+                    />
+                </Route>
 
                 <Route
 
