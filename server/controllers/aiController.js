@@ -1,178 +1,271 @@
 import Patient from "../models/Patient.js";
 import Prescription from "../models/Prescription.js";
 import MedicalTimeline from "../models/MedicalTimeline.js";
+import Profile from "../models/Profile.js";
 
 import {
     generateGeminiResponse,
 } from "../services/geminiService.js";
 
-export async function testGeminiKey(req, res) {
+// ============================================================
+// Resolve patient access
+// ============================================================
 
-    const { apiKey } = req.body;
+async function resolvePatientAccess(req, patientId) {
+    // Patient can access ONLY their linked patient record.
+    if (req.user?.role === "Patient") {
+        const profile = await Profile.findById(
+            req.user.profileId
+        ).select("patient role");
 
-    const result =
-        await generateGeminiResponse({
+        if (!profile?.patient) {
+            return null;
+        }
 
-            apiKey,
+        if (
+            patientId &&
+            String(profile.patient) !== String(patientId)
+        ) {
+            return null;
+        }
 
-            prompt:
-                "Reply only with: Gemini connection successful.",
+        return profile.patient;
+    }
 
-        });
-
-    if (!result.success)
-        return res.status(400).json(result);
-
-    res.json(result);
-
+    // Healthcare/admin roles may request a patient explicitly.
+    return patientId;
 }
 
-export async function patientSummary(req, res) {
+// ============================================================
+// Test Gemini connection
+// ============================================================
 
+export async function testGeminiKey(req, res) {
     try {
+        const { apiKey } = req.body;
 
-        const {
+        if (!apiKey) {
+            return res.status(400).json({
+                success: false,
+                message: "Gemini API key is required.",
+            });
+        }
 
-            patientId,
-
+        const result = await generateGeminiResponse({
             apiKey,
+            prompt:
+                "Reply only with: Gemini connection successful.",
+        });
 
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+
+        return res.json(result);
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            message: err.message,
+        });
+    }
+}
+
+// ============================================================
+// AI Patient Health Summary
+// ============================================================
+
+export async function patientSummary(req, res) {
+    try {
+        const {
+            patientId,
+            apiKey,
             regenerate,
-
         } = req.body;
 
+        // --------------------------------------------------------
+        // Resolve and validate patient access
+        // --------------------------------------------------------
+
+        const resolvedPatientId =
+            await resolvePatientAccess(
+                req,
+                patientId
+            );
+
+        if (!resolvedPatientId) {
+            return res.status(403).json({
+                success: false,
+                message:
+                    "You are not authorized to access this patient's AI summary.",
+            });
+        }
+
+        // --------------------------------------------------------
+        // Find patient
+        // --------------------------------------------------------
+
         const patient =
-            await Patient.findById(patientId);
+            await Patient.findById(
+                resolvedPatientId
+            );
 
         if (!patient) {
-
             return res.status(404).json({
-
-                success:false,
-
-                message:"Patient not found",
-
+                success: false,
+                message: "Patient not found.",
             });
-
         }
+
+        // --------------------------------------------------------
+        // Return cached summary when regeneration is not requested
+        // --------------------------------------------------------
 
         if (
             patient.aiSummary &&
             !regenerate
         ) {
-
             return res.json({
-
-                success:true,
-
-                cached:true,
-
-                summary:patient.aiSummary,
-
+                success: true,
+                cached: true,
+                summary: patient.aiSummary,
                 generatedAt:
                     patient.aiSummaryGeneratedAt,
-
             });
-
         }
+
+        // --------------------------------------------------------
+        // API key required only when generating
+        // --------------------------------------------------------
+
+        if (!apiKey) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Gemini API key is required to generate the AI summary.",
+            });
+        }
+
+        // --------------------------------------------------------
+        // Prescriptions
+        // --------------------------------------------------------
 
         const prescriptions =
             await Prescription.find({
-
-                patient:patientId,
-
+                patient: resolvedPatientId,
             })
-            .populate(
-                "doctor",
-                "displayName"
-            );
+                .populate(
+                    "doctor",
+                    "displayName"
+                )
+                .sort({
+                    createdAt: -1,
+                });
+
+        // --------------------------------------------------------
+        // Medical timeline
+        // --------------------------------------------------------
 
         const timeline =
             await MedicalTimeline.find({
+                patient: resolvedPatientId,
+            })
+                .sort({
+                    createdAt: -1,
+                });
 
-                patient:patientId,
-
-            });
+        // --------------------------------------------------------
+        // AI prompt
+        // --------------------------------------------------------
 
         const prompt = `
-
 You are MedJarvis AI.
 
-Generate a doctor-friendly summary.
+Generate a concise, doctor-friendly patient health summary.
 
-Patient
+PATIENT
 
-${patient.firstName}
-${patient.lastName}
+Name:
+${patient.firstName || ""} ${patient.lastName || ""}
 
 Age:
-${patient.age}
+${patient.age ?? "Not available"}
 
 Gender:
-${patient.gender}
+${patient.gender || "Not available"}
 
 Blood Group:
-${patient.bloodGroup}
+${patient.bloodGroup || "Not available"}
 
 Status:
-${patient.status}
+${patient.status || "Not available"}
 
-Medical History
+MEDICAL HISTORY
 
-${patient.medicalHistory.join(", ")}
+${Array.isArray(patient.medicalHistory)
+                ? patient.medicalHistory.join(", ")
+                : "No medical history recorded"
+            }
 
-Allergies
+ALLERGIES
 
-${patient.allergies.join(", ")}
+${Array.isArray(patient.allergies)
+                ? patient.allergies.join(", ")
+                : "No allergies recorded"
+            }
 
-Medications
+CURRENT MEDICATIONS
 
-${patient.medications.join(", ")}
+${Array.isArray(patient.medications)
+                ? patient.medications.join(", ")
+                : "No medications recorded"
+            }
 
-Prescriptions
+PRESCRIPTIONS
 
 ${JSON.stringify(
-prescriptions,
-null,
-2
-)}
+                prescriptions,
+                null,
+                2
+            )}
 
-Timeline
+MEDICAL TIMELINE
 
 ${JSON.stringify(
-timeline,
-null,
-2
-)}
+                timeline,
+                null,
+                2
+            )}
 
-Generate
+Generate the following sections:
 
-1 Overall Health
+1. Overall Health
+2. Risks
+3. Current Treatment
+4. Recommendations
 
-2 Risks
-
-3 Current Treatment
-
-4 Recommendations
+Do not invent information.
+Clearly indicate when information is unavailable.
 
 Maximum 250 words.
-
 `;
+
+        // --------------------------------------------------------
+        // Gemini
+        // --------------------------------------------------------
 
         const result =
             await generateGeminiResponse({
-
                 apiKey,
-
                 prompt,
-
             });
 
         if (!result.success) {
-
             return res.status(400).json(result);
-
         }
+
+        // --------------------------------------------------------
+        // Save generated summary
+        // --------------------------------------------------------
 
         patient.aiSummary =
             result.text;
@@ -186,31 +279,22 @@ Maximum 250 words.
 
         await patient.save();
 
-        res.json({
-
-            success:true,
-
-            cached:false,
-
-            summary:result.text,
-
+        return res.json({
+            success: true,
+            cached: false,
+            summary: result.text,
             generatedAt:
                 patient.aiSummaryGeneratedAt,
-
         });
+    } catch (err) {
+        console.error(
+            "AI PATIENT SUMMARY ERROR:",
+            err
+        );
 
-    }
-
-    catch(err){
-
-        res.status(500).json({
-
-            success:false,
-
-            message:err.message,
-
+        return res.status(500).json({
+            success: false,
+            message: err.message,
         });
-
     }
-
 }

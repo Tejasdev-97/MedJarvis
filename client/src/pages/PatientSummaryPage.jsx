@@ -17,6 +17,15 @@ export default function PatientSummaryPage() {
     const { patientId } = useParams();
     const navigate = useNavigate();
 
+    const profile = JSON.parse(
+        localStorage.getItem("profile") || "{}"
+    );
+
+    const role = profile.role || "Patient";
+
+    const canAddPrescription =
+        role === "Doctor";
+
     const [patient, setPatient] = useState(null);
     const [latestPrescription, setLatestPrescription] = useState(null);
     const [latestVital, setLatestVital] = useState(null);
@@ -449,8 +458,8 @@ export default function PatientSummaryPage() {
                                 onClick={() => generateAI(false)}
 
                                 className={`px-5 py-2 rounded-xl text-white ${loadingAI
-                                        ? "bg-gray-400"
-                                        : "bg-[#2D6A4F]"
+                                    ? "bg-gray-400"
+                                    : "bg-[#2D6A4F]"
                                     }`}
 
                             >
@@ -468,8 +477,8 @@ export default function PatientSummaryPage() {
                                 onClick={() => generateAI(true)}
 
                                 className={`px-5 py-2 rounded-xl text-white ${loadingAI
-                                        ? "bg-gray-400"
-                                        : "bg-blue-600"
+                                    ? "bg-gray-400"
+                                    : "bg-blue-600"
                                     }`}
 
                             >
@@ -629,16 +638,18 @@ export default function PatientSummaryPage() {
                         View Health Card
                     </button>
 
-                    <button
-                        onClick={() =>
-                            navigate(
-                                `/add-prescription/${patient._id}`
-                            )
-                        }
-                        className="bg-blue-600 text-white px-6 py-3 rounded-xl"
-                    >
-                        Add Prescription
-                    </button>
+                    {canAddPrescription && (
+                        <button
+                            onClick={() =>
+                                navigate(
+                                    `/add-prescription/${patient._id}`
+                                )
+                            }
+                            className="bg-blue-600 text-white px-6 py-3 rounded-xl"
+                        >
+                            Add Prescription
+                        </button>
+                    )}
 
                     <button
                         onClick={() =>

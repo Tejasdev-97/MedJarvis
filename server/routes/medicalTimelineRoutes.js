@@ -10,6 +10,11 @@ import authorizeRoles from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
+// ============================================================
+// ADD TIMELINE EVENT
+// Healthcare staff only
+// ============================================================
+
 router.post(
     "/",
     protect,
@@ -21,6 +26,17 @@ router.post(
     addTimelineEvent
 );
 
+// ============================================================
+// GET PATIENT TIMELINE
+//
+// Staff:
+//     /timeline/:patientId
+//
+// Patient:
+//     The controller ignores the supplied patientId and
+//     resolves the patient from the logged-in profile.
+// ============================================================
+
 router.get(
     "/:patientId",
     protect,
@@ -29,7 +45,8 @@ router.get(
         "Health Worker",
         "Hospital Manager",
         "Super Admin",
-        "Ambulance Staff"
+        "Ambulance Staff",
+        "Patient"
     ),
     getPatientTimeline
 );

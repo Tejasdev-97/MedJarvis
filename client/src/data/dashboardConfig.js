@@ -3,129 +3,352 @@ import {
     ScanLine,
     Brain,
     FileText,
-    Activity,
     HeartPulse,
-    CalendarDays,
     Ambulance,
-    Building2,
     Shield,
     Settings,
-    MapPinned,
     QrCode,
     UserPlus,
+    Activity,
     Stethoscope,
-    ClipboardList,
-    Hospital,
+    UserRound,
 } from "lucide-react";
 
 export const dashboardConfig = {
 
-    "Super Admin": {
+    /* ============================================================
+       SUPER ADMIN
+    ============================================================ */
 
+    "Super Admin": {
         stats: [
-            { title: "Users", value: "6", color: "#2563EB", icon: Users },
-            { title: "Hospitals", value: "1", color: "#2D6A4F", icon: Hospital },
-            { title: "Profiles", value: "6", color: "#F59E0B", icon: Shield },
-            { title: "System", value: "Healthy", color: "#EF4444", icon: Activity },
+            {
+                title: "Users",
+                value: "—",
+                color: "#2563EB",
+                icon: Users,
+            },
+            {
+                title: "Patients",
+                value: "—",
+                color: "#2D6A4F",
+                icon: HeartPulse,
+            },
+            {
+                title: "Doctors",
+                value: "—",
+                color: "#F59E0B",
+                icon: Stethoscope,
+            },
+            {
+                title: "Health Workers",
+                value: "—",
+                color: "#059669",
+                icon: UserRound,
+            },
         ],
 
         actions: [
-            { title: "Manage Users", icon: Users, path: "/users" },
-            { title: "Hospitals", icon: Building2, path: "/hospitals" },
-            { title: "Audit Logs", icon: Shield, path: "/audit" },
-            { title: "Settings", icon: Settings, path: "/settings" },
+            {
+                title: "Manage Users",
+                icon: Users,
+                path: "/users",
+            },
+            {
+                title: "Patients",
+                icon: HeartPulse,
+                path: "/patients",
+            },
+            {
+                title: "Scan Patient",
+                icon: ScanLine,
+                path: "/scan-patient",
+            },
+            {
+                title: "Settings",
+                icon: Settings,
+                path: "/settings",
+            },
         ],
-
     },
+
+    /* ============================================================
+       DOCTOR
+    ============================================================ */
 
     Doctor: {
-
         stats: [
-            { title: "Patients", value: "24", color: "#2563EB", icon: Users },
-            { title: "Consultations", value: "7", color: "#2D6A4F", icon: ClipboardList },
-            { title: "Prescriptions", value: "12", color: "#F59E0B", icon: FileText },
-            { title: "Critical", value: "2", color: "#EF4444", icon: Activity },
+            {
+                title: "Patients",
+                value: "—",
+                color: "#2563EB",
+                icon: Users,
+            },
+            {
+                title: "Prescriptions",
+                value: "—",
+                color: "#2D6A4F",
+                icon: FileText,
+            },
+            {
+                title: "Critical",
+                value: "—",
+                color: "#EF4444",
+                icon: Activity,
+            },
+            {
+                title: "Health Workers",
+                value: "—",
+                color: "#F59E0B",
+                icon: UserRound,
+            },
         ],
 
         actions: [
-            { title: "Patients", icon: Users, path: "/patients" },
-            { title: "Scan Patient", icon: ScanLine, path: "/scan-patient" },
-            { title: "AI Assistant", icon: Brain, path: "/ai" },
-            { title: "Prescriptions", icon: FileText, path: "/prescriptions" },
+            {
+                title: "Patients",
+                icon: Users,
+                path: "/patients",
+            },
+            {
+                title: "Scan Patient",
+                icon: ScanLine,
+                path: "/scan-patient",
+            },
+            {
+                title: "AI Health Summary",
+                icon: Brain,
+                path: "/ai",
+            },
+            {
+                title: "Prescriptions",
+                icon: FileText,
+                path: "/prescriptions",
+            },
         ],
-
     },
+
+    /* ============================================================
+       HEALTH WORKER
+    ============================================================ */
 
     "Health Worker": {
-
         stats: [
-            { title: "Patients", value: "53", color: "#2563EB", icon: Users },
-            { title: "Village Visits", value: "5", color: "#2D6A4F", icon: MapPinned },
-            { title: "Vitals", value: "18", color: "#F59E0B", icon: HeartPulse },
-            { title: "Emergency", value: "1", color: "#EF4444", icon: Ambulance },
+            {
+                title: "Patients",
+                value: "—",
+                color: "#2563EB",
+                icon: Users,
+            },
+            {
+                title: "Active Patients",
+                value: "—",
+                color: "#2D6A4F",
+                icon: HeartPulse,
+            },
+            {
+                title: "Observation",
+                value: "—",
+                color: "#F59E0B",
+                icon: Activity,
+            },
+            {
+                title: "Emergency",
+                value: "—",
+                color: "#EF4444",
+                icon: Ambulance,
+            },
         ],
 
         actions: [
-            { title: "Register Patient", icon: UserPlus, path: "/patients" },
-            { title: "Scan Patient", icon: ScanLine, path: "/scan-patient" },
-            { title: "Village Visits", icon: MapPinned, path: "/villages" },
-            { title: "Vitals", icon: HeartPulse, path: "/vitals" },
+            {
+                title: "Register Patient",
+                icon: UserPlus,
+                path: "/register-patient",
+            },
+            {
+                title: "Patients",
+                icon: Users,
+                path: "/patients",
+            },
+            {
+                title: "Scan Patient",
+                icon: ScanLine,
+                path: "/scan-patient",
+            },
+            {
+                title: "Vitals",
+                icon: HeartPulse,
+                path: "/vitals",
+            },
         ],
-
     },
+
+    /* ============================================================
+       AMBULANCE STAFF
+    ============================================================ */
 
     "Ambulance Staff": {
-
         stats: [
-            { title: "Emergency", value: "2", color: "#EF4444", icon: Ambulance },
-            { title: "Patients", value: "12", color: "#2563EB", icon: Users },
-            { title: "Hospital", value: "3", color: "#2D6A4F", icon: Hospital },
-            { title: "Critical", value: "1", color: "#F59E0B", icon: Activity },
+            {
+                title: "Emergency",
+                value: "—",
+                color: "#EF4444",
+                icon: Ambulance,
+            },
+            {
+                title: "Patients",
+                value: "—",
+                color: "#2563EB",
+                icon: Users,
+            },
+            {
+                title: "Critical",
+                value: "—",
+                color: "#F59E0B",
+                icon: Activity,
+            },
+            {
+                title: "Healthy",
+                value: "—",
+                color: "#2D6A4F",
+                icon: HeartPulse,
+            },
         ],
 
         actions: [
-            { title: "Scan Patient", icon: ScanLine, path: "/scan-patient" },
-            { title: "Emergency", icon: Ambulance, path: "/emergency" },
-            { title: "Patients", icon: Users, path: "/patients" },
-            { title: "Nearby Hospitals", icon: Hospital, path: "/hospitals" },
+            {
+                title: "Scan Patient",
+                icon: ScanLine,
+                path: "/scan-patient",
+            },
+            {
+                title: "Emergency",
+                icon: Ambulance,
+                path: "/emergency",
+            },
+            {
+                title: "Patients",
+                icon: Users,
+                path: "/patients",
+            },
+            {
+                title: "Settings",
+                icon: Settings,
+                path: "/settings",
+            },
         ],
-
     },
+
+    /* ============================================================
+       HOSPITAL MANAGER
+    ============================================================ */
 
     "Hospital Manager": {
-
         stats: [
-            { title: "Doctors", value: "12", color: "#2563EB", icon: Stethoscope },
-            { title: "Health Workers", value: "18", color: "#2D6A4F", icon: Users },
-            { title: "Patients", value: "245", color: "#F59E0B", icon: HeartPulse },
-            { title: "Departments", value: "8", color: "#EF4444", icon: Building2 },
+            {
+                title: "Doctors",
+                value: "—",
+                color: "#2563EB",
+                icon: Stethoscope,
+            },
+            {
+                title: "Health Workers",
+                value: "—",
+                color: "#2D6A4F",
+                icon: Users,
+            },
+            {
+                title: "Patients",
+                value: "—",
+                color: "#F59E0B",
+                icon: HeartPulse,
+            },
+            {
+                title: "Critical",
+                value: "—",
+                color: "#EF4444",
+                icon: Activity,
+            },
         ],
 
         actions: [
-            { title: "Departments", icon: Building2, path: "/departments" },
-            { title: "Staff", icon: Users, path: "/staff" },
-            { title: "Reports", icon: FileText, path: "/reports" },
-            { title: "Scan Patient", icon: ScanLine, path: "/scan-patient" },
+            {
+                title: "Staff Profiles",
+                icon: Users,
+                path: "/users",
+            },
+            {
+                title: "Patients",
+                icon: HeartPulse,
+                path: "/patients",
+            },
+            {
+                title: "Scan Patient",
+                icon: ScanLine,
+                path: "/scan-patient",
+            },
+            {
+                title: "Reports",
+                icon: FileText,
+                path: "/patients",
+            },
         ],
-
     },
+
+    /* ============================================================
+       PATIENT
+    ============================================================ */
 
     Patient: {
-
         stats: [
-            { title: "Health Card", value: "Active", color: "#2563EB", icon: QrCode },
-            { title: "Vitals", value: "Normal", color: "#2D6A4F", icon: HeartPulse },
-            { title: "Appointments", value: "2", color: "#F59E0B", icon: CalendarDays },
-            { title: "Prescriptions", value: "3", color: "#EF4444", icon: FileText },
+            {
+                title: "Health Card",
+                value: "Available",
+                color: "#2563EB",
+                icon: QrCode,
+            },
+            {
+                title: "Vitals",
+                value: "—",
+                color: "#2D6A4F",
+                icon: HeartPulse,
+            },
+            {
+                title: "Prescriptions",
+                value: "—",
+                color: "#F59E0B",
+                icon: FileText,
+            },
+            {
+                title: "AI Summary",
+                value: "Available",
+                color: "#059669",
+                icon: Brain,
+            },
         ],
 
         actions: [
-            { title: "Health Card", icon: QrCode, path: "/health-card" },
-            { title: "Appointments", icon: CalendarDays, path: "/appointments" },
-            { title: "Prescriptions", icon: FileText, path: "/prescriptions" },
-            { title: "Emergency", icon: Ambulance, path: "/emergency" },
+            {
+                title: "Health Card",
+                icon: QrCode,
+                path: "/health-card",
+            },
+            {
+                title: "My Health",
+                icon: HeartPulse,
+                path: "/vitals",
+            },
+            {
+                title: "Prescriptions",
+                icon: FileText,
+                path: "/prescriptions",
+            },
+            {
+                title: "AI Health Summary",
+                icon: Brain,
+                path: "/ai",
+            },
         ],
-
     },
-
 };

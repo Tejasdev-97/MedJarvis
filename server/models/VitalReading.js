@@ -20,6 +20,10 @@ const vitalReadingSchema = new mongoose.Schema(
             default: null,
         },
 
+        // ============================================================
+        // PHYSIOLOGICAL VITALS
+        // ============================================================
+
         spo2: {
             type: Number,
             default: null,
@@ -39,6 +43,37 @@ const vitalReadingSchema = new mongoose.Schema(
             type: Number,
             default: null,
         },
+
+        // ============================================================
+        // MEASUREMENT CONFIDENCE
+        //
+        // These represent measurement/signal quality confidence.
+        // They are NOT clinical accuracy percentages.
+        // ============================================================
+
+        measurementConfidence: {
+            type: Number,
+            default: null,
+        },
+
+        spo2Confidence: {
+            type: Number,
+            default: null,
+        },
+
+        heartRateConfidence: {
+            type: Number,
+            default: null,
+        },
+
+        hrvConfidence: {
+            type: Number,
+            default: null,
+        },
+
+        // ============================================================
+        // MOTION / SENSOR DATA
+        // ============================================================
 
         tilt: {
             type: Number,
@@ -68,22 +103,40 @@ const vitalReadingSchema = new mongoose.Schema(
         gyroY: Number,
         gyroZ: Number,
 
+        // ============================================================
+        // ACQUISITION / VALIDATION INFORMATION
+        // ============================================================
+
         measurementDuration: {
             type: Number,
-            default: 15,
+            default: 60,
         },
 
         maxSamples: Number,
+
         spo2WindowSamples: Number,
+
         mpuSamples: Number,
 
         validatedBeats: Number,
+
         validatedRRIntervals: Number,
+
         validHRWindows: Number,
+
         validSpO2Windows: Number,
 
+        // ============================================================
+        // RAW OPTICAL VALUES
+        // ============================================================
+
         ir: Number,
+
         red: Number,
+
+        // ============================================================
+        // CONNECTION / MODE
+        // ============================================================
 
         wifiConnected: {
             type: Boolean,
@@ -96,10 +149,18 @@ const vitalReadingSchema = new mongoose.Schema(
             default: "spot",
         },
 
+        // ============================================================
+        // FALL FLAG
+        // ============================================================
+
         fallDetected: {
             type: Boolean,
             default: false,
         },
+
+        // ============================================================
+        // SOURCE
+        // ============================================================
 
         source: {
             type: String,
@@ -111,4 +172,7 @@ const vitalReadingSchema = new mongoose.Schema(
     }
 );
 
-export default mongoose.model("VitalReading", vitalReadingSchema);
+export default mongoose.model(
+    "VitalReading",
+    vitalReadingSchema
+);

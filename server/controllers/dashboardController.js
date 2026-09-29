@@ -4,44 +4,124 @@ import User from "../models/User.js";
 
 export const getDashboardStats = async (req, res) => {
     try {
-        const totalUsers = await User.countDocuments();
+        const role = req.user?.role;
 
-        const totalPatients = await Patient.countDocuments();
+        // ========================================================
+        // Common/global statistics
+        // ========================================================
 
-        const totalDoctors = await Profile.countDocuments({
-            role: "Doctor",
-        });
+        const totalPatients =
+            await Patient.countDocuments();
 
-        const totalHealthWorkers = await Profile.countDocuments({
-            role: "Health Worker",
-        });
+        // ========================================================
+        // Patient dashboard
+        // ========================================================
 
-        const totalAmbulance = await Profile.countDocuments({
-            role: "Ambulance Staff",
-        });
+        if (role === "Patient") {
+            return res.json({
+                success: true,
+                data: {
+                    totalPatients,
+                },
+            });
+        }
 
-        const totalManagers = await Profile.countDocuments({
-            role: "Hospital Manager",
-        });
+        // ========================================================
+        // Doctor / Health Worker / Ambulance Staff
+        // ========================================================
 
-        const totalHospitals = await Profile.countDocuments({
-            role: "Hospital",
-        });
+        if (
+            role === "Doctor" ||
+            role === "Health Worker" ||
+            role === "Ambulance Staff"
+        ) {
+            const activePatients =
+                await Patient.countDocuments({
+                    status: {
+                        $in: [
+                            "Healthy",
+                            "Observation",
+                            "Critical",
+                        ],
+                    },
+                });
 
-        const healthy = await Patient.countDocuments({
-            status: "Healthy",
-        });
+            const critical =
+                await Patient.countDocuments({
+                    status: "Critical",
+                });
 
-        const observation = await Patient.countDocuments({
-            status: "Observation",
-        });
+            const observation =
+                await Patient.countDocuments({
+                    status: "Observation",
+                });
 
-        const critical = await Patient.countDocuments({
-            status: "Critical",
-        });
+            return res.json({
+                success: true,
+                data: {
+                    totalPatients,
+                    activePatients,
+                    critical,
+                    observation,
+                },
+            });
+        }
+
+        // ========================================================
+        // Hospital Manager / Super Admin
+        // ========================================================
+
+        const totalUsers =
+            await User.countDocuments();
+
+        const totalDoctors =
+            await Profile.countDocuments({
+                role: "Doctor",
+            });
+
+        const totalHealthWorkers =
+            await Profile.countDocuments({
+                role: "Health Worker",
+            });
+
+        const totalAmbulance =
+            await Profile.countDocuments({
+                role: "Ambulance Staff",
+            });
+
+        const totalManagers =
+            await Profile.countDocuments({
+                role: "Hospital Manager",
+            });
+
+        const totalHospitals =
+            await Profile.countDocuments({
+                role: "Hospital",
+            });
+
+        const healthy =
+            await Patient.countDocuments({
+                status: "Healthy",
+            });
+
+        const observation =
+            await Patient.countDocuments({
+                status: "Observation",
+            });
+
+        const critical =
+            await Patient.countDocuments({
+                status: "Critical",
+            });
 
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+
+        today.setHours(
+            0,
+            0,
+            0,
+            0
+        );
 
         const todayRegistrations =
             await Patient.countDocuments({
@@ -50,7 +130,7 @@ export const getDashboardStats = async (req, res) => {
                 },
             });
 
-        res.json({
+        return res.json({
             success: true,
             data: {
                 totalUsers,
@@ -67,7 +147,12 @@ export const getDashboardStats = async (req, res) => {
             },
         });
     } catch (err) {
-        res.status(500).json({
+        console.error(
+            "DASHBOARD STATS ERROR:",
+            err
+        );
+
+        return res.status(500).json({
             success: false,
             message: err.message,
         });

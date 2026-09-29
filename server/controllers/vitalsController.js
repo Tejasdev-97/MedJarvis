@@ -5,9 +5,29 @@ import MonitoringSession from "../models/MonitoringSession.js";
 import Profile from "../models/Profile.js";
 
 // ============================================================
-// SAVE SENSOR READING
-// ESP32 -> bandId -> active session -> patient
+// PATIENT ACCESS RESOLUTION
+//
+// Patient users may only access the patient linked to their
+// authenticated profile.
+//
+// Staff roles retain the ability to request a patientId.
 // ============================================================
+
+async function resolveRequestedPatientId(req) {
+    if (req.user?.role !== "Patient") {
+        return req.params.patientId;
+    }
+
+    const profile = await Profile.findById(
+        req.user.profileId
+    ).select("patient");
+
+    if (!profile?.patient) {
+        return null;
+    }
+
+    return String(profile.patient);
+}
 
 export const createVitalReading = async (req, res) => {
     try {
@@ -16,6 +36,10 @@ export const createVitalReading = async (req, res) => {
             spo2,
             heartRate,
             hrvSDNN,
+            measurementConfidence,
+            spo2Confidence,
+            heartRateConfidence,
+            hrvConfidence,
             temperature,
             tilt,
             signalQuality,
@@ -40,8 +64,6 @@ export const createVitalReading = async (req, res) => {
             wifiConnected,
             mode,
             fallDetected,
-
-            // NEW: live PPG waveform from ESP32
             ppgWaveform,
         } = req.body;
 
@@ -51,10 +73,6 @@ export const createVitalReading = async (req, res) => {
                 message: "bandId is required",
             });
         }
-
-        // --------------------------------------------------------
-        // Find physical band
-        // --------------------------------------------------------
 
         const band = await Band.findOne({
             bandId,
@@ -67,10 +85,6 @@ export const createVitalReading = async (req, res) => {
                 message: "Band not found",
             });
         }
-
-        // --------------------------------------------------------
-        // Find active monitoring session for this band
-        // --------------------------------------------------------
 
         const session =
             await MonitoringSession.findOne({
@@ -88,66 +102,43 @@ export const createVitalReading = async (req, res) => {
 
         const patient = session.patient;
 
-        // --------------------------------------------------------
-        // Save vital
-        // --------------------------------------------------------
-
         const vital = await VitalReading.create({
             patient: patient._id,
-
             band: band._id,
-
             session: session._id,
-
             spo2,
             heartRate,
             hrvSDNN,
+            measurementConfidence,
+            spo2Confidence,
+            heartRateConfidence,
+            hrvConfidence,
             temperature,
             tilt,
             signalQuality,
-
             accelMagnitude,
             gyroMagnitude,
-
             accelX,
             accelY,
             accelZ,
-
             gyroX,
             gyroY,
             gyroZ,
-
             ir,
             red,
-
             measurementDuration,
             maxSamples,
             spo2WindowSamples,
             mpuSamples,
-
             validatedBeats,
             validatedRRIntervals,
             validHRWindows,
             validSpO2Windows,
-
             wifiConnected,
-
             mode: mode || session.mode,
-
             fallDetected: fallDetected === true,
-
             source: "ESP32",
         });
-
-        // --------------------------------------------------------
-        // Send live vital ONLY to this patient's room
-        //
-        // PPG waveform is forwarded through Socket.IO for the
-        // real-time waveform on MyHealthPage.
-        //
-        // The waveform is NOT required to be stored in the
-        // VitalReading database document.
-        // --------------------------------------------------------
 
         const io = req.app.get("io");
 
@@ -156,25 +147,68 @@ export const createVitalReading = async (req, res) => {
                 ? vital.toObject()
                 : { ...vital };
 
-            // Sanitize and keep only the most recent 48 samples.
-            // This keeps the Socket.IO payload small and suitable
-            // for a live waveform.
+            /*
+             * PPG waveform is intentionally NOT stored in MongoDB.
+             * It is only forwarded live through Socket.IO.
+             *
+             * ESP32 currently sends up to 256 samples.
+             * Keep the full 256-sample window instead of
+             * truncating it to a smaller packet.
+             */
             if (
                 Array.isArray(ppgWaveform) &&
                 ppgWaveform.length > 1
             ) {
-                const sanitizedWaveform = ppgWaveform
-                    .map(Number)
-                    .filter(Number.isFinite)
-                    .slice(-48);
+                const sanitizedWaveform =
+                    ppgWaveform
+                        .map(Number)
+                        .filter(Number.isFinite)
+                        .slice(-256);
 
-                if (sanitizedWaveform.length > 1) {
+                if (
+                    sanitizedWaveform.length > 1
+                ) {
                     liveVital.ppgWaveform =
                         sanitizedWaveform;
                 }
             }
 
-            io.to(`patient_${patient._id}`).emit(
+            /*
+             * Forward confirmed beat positions so the frontend
+             * can mark real validated heart beats on the PPG
+             * waveform.
+             */
+            if (
+                Array.isArray(req.body.ppgBeatPositions) &&
+                req.body.ppgBeatPositions.length > 0
+            ) {
+                const waveformLength =
+                    Array.isArray(liveVital.ppgWaveform)
+                        ? liveVital.ppgWaveform.length
+                        : 0;
+
+                const sanitizedBeatPositions =
+                    req.body.ppgBeatPositions
+                        .map(Number)
+                        .filter(
+                            (position) =>
+                                Number.isInteger(position) &&
+                                position >= 0 &&
+                                position < waveformLength
+                        )
+                        .slice(-16);
+
+                if (
+                    sanitizedBeatPositions.length > 0
+                ) {
+                    liveVital.ppgBeatPositions =
+                        sanitizedBeatPositions;
+                }
+            }
+
+            io.to(
+                `patient_${patient._id}`
+            ).emit(
                 "newVital",
                 liveVital
             );
@@ -182,7 +216,8 @@ export const createVitalReading = async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            message: "Vital reading saved successfully",
+            message:
+                "Vital reading saved successfully",
             data: vital,
         });
     } catch (error) {
@@ -193,26 +228,16 @@ export const createVitalReading = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Unable to save vital reading",
+            message:
+                "Unable to save vital reading",
         });
     }
 };
 
-// ============================================================
-// SENSOR STATUS TELEMETRY
-// ESP32 -> Backend -> Socket.IO -> MyHealthPage
-//
-// IMPORTANT:
-// The ESP32 sends ONLY the bandId.
-// The backend determines the patient from:
-//
-// BAND -> ACTIVE MONITORING SESSION -> PATIENT
-//
-// This prevents the ESP32 from assigning a status to an
-// arbitrary patient.
-// ============================================================
-
-export const updateSensorStatus = async (req, res) => {
+export const updateSensorStatus = async (
+    req,
+    res
+) => {
     try {
         const {
             bandId,
@@ -222,20 +247,12 @@ export const updateSensorStatus = async (req, res) => {
             mode,
         } = req.body;
 
-        // --------------------------------------------------------
-        // Validate bandId
-        // --------------------------------------------------------
-
         if (!bandId) {
             return res.status(400).json({
                 success: false,
                 message: "bandId is required",
             });
         }
-
-        // --------------------------------------------------------
-        // Validate status
-        // --------------------------------------------------------
 
         const allowedStatuses = [
             "STARTING",
@@ -261,16 +278,15 @@ export const updateSensorStatus = async (req, res) => {
             });
         }
 
-        if (!allowedStatuses.includes(status)) {
+        if (
+            !allowedStatuses.includes(status)
+        ) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid sensor status",
+                message:
+                    "Invalid sensor status",
             });
         }
-
-        // --------------------------------------------------------
-        // Find physical band
-        // --------------------------------------------------------
 
         const band = await Band.findOne({
             bandId,
@@ -284,19 +300,16 @@ export const updateSensorStatus = async (req, res) => {
             });
         }
 
-        // --------------------------------------------------------
-        // Find active monitoring session
-        //
-        // BAND -> SESSION -> PATIENT
-        // --------------------------------------------------------
-
         const session =
             await MonitoringSession.findOne({
                 band: band._id,
                 status: "active",
             }).populate("patient");
 
-        if (!session || !session.patient) {
+        if (
+            !session ||
+            !session.patient
+        ) {
             return res.status(409).json({
                 success: false,
                 message:
@@ -304,61 +317,57 @@ export const updateSensorStatus = async (req, res) => {
             });
         }
 
-        const patient = session.patient;
+        const patient =
+            session.patient;
 
-        // --------------------------------------------------------
-        // Normalize remaining seconds
-        // --------------------------------------------------------
-
-        let normalizedRemainingSeconds = null;
+        let normalizedRemainingSeconds =
+            null;
 
         if (
-            remainingSeconds !== undefined &&
+            remainingSeconds !==
+            undefined &&
             remainingSeconds !== null &&
             remainingSeconds !== ""
         ) {
             const parsedSeconds =
-                Number(remainingSeconds);
+                Number(
+                    remainingSeconds
+                );
 
             if (
-                Number.isFinite(parsedSeconds) &&
+                Number.isFinite(
+                    parsedSeconds
+                ) &&
                 parsedSeconds >= 0
             ) {
                 normalizedRemainingSeconds =
-                    Math.floor(parsedSeconds);
+                    Math.floor(
+                        parsedSeconds
+                    );
             }
         }
 
-        // --------------------------------------------------------
-        // Build sensor status payload
-        // --------------------------------------------------------
-
         const sensorStatus = {
             bandId: band.bandId,
-
-            patientId: patient._id,
-
-            sessionId: session._id,
-
-            mode: mode || session.mode,
-
+            patientId:
+                patient._id,
+            sessionId:
+                session._id,
+            mode:
+                mode ||
+                session.mode,
             status,
-
             message:
                 message ||
                 "Sensor status updated.",
-
             remainingSeconds:
                 normalizedRemainingSeconds,
-
-            timestamp: new Date().toISOString(),
+            timestamp:
+                new Date().toISOString(),
         };
 
-        // --------------------------------------------------------
-        // Send status ONLY to this patient's Socket.IO room
-        // --------------------------------------------------------
-
-        const io = req.app.get("io");
+        const io =
+            req.app.get("io");
 
         if (io) {
             io.to(
@@ -369,13 +378,10 @@ export const updateSensorStatus = async (req, res) => {
             );
         }
 
-        // --------------------------------------------------------
-        // Backend response to ESP32
-        // --------------------------------------------------------
-
         return res.status(200).json({
             success: true,
-            message: "Sensor status received",
+            message:
+                "Sensor status received",
             data: sensorStatus,
         });
     } catch (error) {
@@ -392,22 +398,34 @@ export const updateSensorStatus = async (req, res) => {
     }
 };
 
-// ============================================================
-// GET LATEST VITAL
-// ============================================================
-
-export const getLatestVital = async (req, res) => {
+export const getLatestVital = async (
+    req,
+    res
+) => {
     try {
-        const { patientId } = req.params;
+        const patientId =
+            await resolveRequestedPatientId(req);
 
-        const vital = await VitalReading.findOne({
-            patient: patientId,
-        }).sort({ createdAt: -1 });
+        if (!patientId) {
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Patient profile is not linked to a patient record.",
+            });
+        }
+
+        const vital =
+            await VitalReading.findOne({
+                patient: patientId,
+            }).sort({
+                createdAt: -1,
+            });
 
         if (!vital) {
             return res.status(404).json({
                 success: false,
-                message: "No vital readings found",
+                message:
+                    "No vital readings found",
             });
         }
 
@@ -429,19 +447,30 @@ export const getLatestVital = async (req, res) => {
     }
 };
 
-// ============================================================
-// GET VITAL HISTORY
-// ============================================================
-
-export const getPatientVitals = async (req, res) => {
+export const getPatientVitals = async (
+    req,
+    res
+) => {
     try {
-        const { patientId } = req.params;
+        const patientId =
+            await resolveRequestedPatientId(req);
 
-        const vitals = await VitalReading.find({
-            patient: patientId,
-        })
-            .sort({ createdAt: -1 })
-            .limit(50);
+        if (!patientId) {
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Patient profile is not linked to a patient record.",
+            });
+        }
+
+        const vitals =
+            await VitalReading.find({
+                patient: patientId,
+            })
+                .sort({
+                    createdAt: -1,
+                })
+                .limit(50);
 
         return res.json({
             success: true,
@@ -462,24 +491,29 @@ export const getPatientVitals = async (req, res) => {
     }
 };
 
-// ============================================================
-// START MONITORING
-// Frontend -> Backend
-// ============================================================
-
-export const startMonitoring = async (req, res) => {
+export const startMonitoring = async (
+    req,
+    res
+) => {
     try {
-        const { bandId, mode } = req.body;
+        const {
+            bandId,
+            mode,
+        } = req.body;
 
         if (!bandId) {
             return res.status(400).json({
                 success: false,
-                message: "bandId is required",
+                message:
+                    "bandId is required",
             });
         }
 
         if (
-            !["spot", "continuous"].includes(mode)
+            ![
+                "spot",
+                "continuous",
+            ].includes(mode)
         ) {
             return res.status(400).json({
                 success: false,
@@ -488,25 +522,19 @@ export const startMonitoring = async (req, res) => {
             });
         }
 
-        // --------------------------------------------------------
-        // Find band
-        // --------------------------------------------------------
-
-        const band = await Band.findOne({
-            bandId,
-            isActive: true,
-        });
+        const band =
+            await Band.findOne({
+                bandId,
+                isActive: true,
+            });
 
         if (!band) {
             return res.status(404).json({
                 success: false,
-                message: "Band not found",
+                message:
+                    "Band not found",
             });
         }
-
-        // --------------------------------------------------------
-        // Prevent same band being used twice
-        // --------------------------------------------------------
 
         const existingSession =
             await MonitoringSession.findOne({
@@ -522,10 +550,6 @@ export const startMonitoring = async (req, res) => {
             });
         }
 
-        // --------------------------------------------------------
-        // Get logged-in user's profile
-        // --------------------------------------------------------
-
         const profile =
             await Profile.findById(
                 req.user.profileId
@@ -534,13 +558,10 @@ export const startMonitoring = async (req, res) => {
         if (!profile) {
             return res.status(404).json({
                 success: false,
-                message: "Profile not found",
+                message:
+                    "Profile not found",
             });
         }
-
-        // --------------------------------------------------------
-        // Patient must come from profile.patient
-        // --------------------------------------------------------
 
         if (!profile.patient) {
             return res.status(400).json({
@@ -553,19 +574,18 @@ export const startMonitoring = async (req, res) => {
         const patient =
             await Patient.findOne({
                 _id: profile.patient,
-                isDeleted: { $ne: true },
+                isDeleted: {
+                    $ne: true,
+                },
             });
 
         if (!patient) {
             return res.status(404).json({
                 success: false,
-                message: "Patient not found",
+                message:
+                    "Patient not found",
             });
         }
-
-        // --------------------------------------------------------
-        // Create monitoring session
-        // --------------------------------------------------------
 
         const session =
             await MonitoringSession.create({
@@ -573,15 +593,14 @@ export const startMonitoring = async (req, res) => {
                 patient: patient._id,
                 mode,
                 status: "active",
-                startedAt: new Date(),
-                createdBy: profile._id,
+                startedAt:
+                    new Date(),
+                createdBy:
+                    profile._id,
             });
 
-        // --------------------------------------------------------
-        // Mark band in use
-        // --------------------------------------------------------
-
-        band.status = "In Use";
+        band.status =
+            "In Use";
 
         await band.save();
 
@@ -590,10 +609,14 @@ export const startMonitoring = async (req, res) => {
             message:
                 `${mode} monitoring started`,
             data: {
-                sessionId: session._id,
-                bandId: band.bandId,
-                patientId: patient._id,
-                mode: session.mode,
+                sessionId:
+                    session._id,
+                bandId:
+                    band.bandId,
+                patientId:
+                    patient._id,
+                mode:
+                    session.mode,
                 active: true,
             },
         });
@@ -611,31 +634,34 @@ export const startMonitoring = async (req, res) => {
     }
 };
 
-// ============================================================
-// STOP MONITORING
-// Frontend -> Backend
-// ============================================================
-
-export const stopMonitoring = async (req, res) => {
+export const stopMonitoring = async (
+    req,
+    res
+) => {
     try {
-        const { bandId } = req.body;
+        const {
+            bandId,
+        } = req.body;
 
         if (!bandId) {
             return res.status(400).json({
                 success: false,
-                message: "bandId is required",
+                message:
+                    "bandId is required",
             });
         }
 
-        const band = await Band.findOne({
-            bandId,
-            isActive: true,
-        });
+        const band =
+            await Band.findOne({
+                bandId,
+                isActive: true,
+            });
 
         if (!band) {
             return res.status(404).json({
                 success: false,
-                message: "Band not found",
+                message:
+                    "Band not found",
             });
         }
 
@@ -653,22 +679,21 @@ export const stopMonitoring = async (req, res) => {
             });
         }
 
-        session.status = "stopped";
+        session.status =
+            "stopped";
 
-        session.endedAt = new Date();
+        session.endedAt =
+            new Date();
 
         await session.save();
 
-        band.status = "Available";
+        band.status =
+            "Available";
 
         await band.save();
 
-        // --------------------------------------------------------
-        // Inform the patient's frontend that backend session
-        // has stopped.
-        // --------------------------------------------------------
-
-        const io = req.app.get("io");
+        const io =
+            req.app.get("io");
 
         if (io) {
             io.to(
@@ -676,12 +701,17 @@ export const stopMonitoring = async (req, res) => {
             ).emit(
                 "monitoringState",
                 {
-                    bandId: band.bandId,
-                    sessionId: session._id,
-                    patientId: session.patient,
+                    bandId:
+                        band.bandId,
+                    sessionId:
+                        session._id,
+                    patientId:
+                        session.patient,
                     active: false,
-                    mode: session.mode,
-                    state: "STOPPED",
+                    mode:
+                        session.mode,
+                    state:
+                        "STOPPED",
                     timestamp:
                         new Date().toISOString(),
                 }
@@ -690,10 +720,13 @@ export const stopMonitoring = async (req, res) => {
 
         return res.json({
             success: true,
-            message: "Monitoring stopped",
+            message:
+                "Monitoring stopped",
             data: {
-                sessionId: session._id,
-                bandId: band.bandId,
+                sessionId:
+                    session._id,
+                bandId:
+                    band.bandId,
                 active: false,
             },
         });
@@ -711,27 +744,26 @@ export const stopMonitoring = async (req, res) => {
     }
 };
 
-// ============================================================
-// ESP32 CHECKS MONITORING CONTROL
-// GET /api/vitals/control/:bandId
-// ============================================================
-
 export const getMonitoringControl = async (
     req,
     res
 ) => {
     try {
-        const { bandId } = req.params;
-
-        const band = await Band.findOne({
+        const {
             bandId,
-            isActive: true,
-        });
+        } = req.params;
+
+        const band =
+            await Band.findOne({
+                bandId,
+                isActive: true,
+            });
 
         if (!band) {
             return res.status(404).json({
                 success: false,
-                message: "Band not found",
+                message:
+                    "Band not found",
             });
         }
 
@@ -753,9 +785,12 @@ export const getMonitoringControl = async (
         return res.json({
             success: true,
             active: true,
-            mode: session.mode,
-            sessionId: session._id,
-            patientId: session.patient,
+            mode:
+                session.mode,
+            sessionId:
+                session._id,
+            patientId:
+                session.patient,
         });
     } catch (error) {
         console.error(
@@ -771,26 +806,26 @@ export const getMonitoringControl = async (
     }
 };
 
-// ============================================================
-// ESP32 MARKS SPOT MONITORING COMPLETE
-// ============================================================
-
 export const completeMonitoring = async (
     req,
     res
 ) => {
     try {
-        const { bandId } = req.params;
-
-        const band = await Band.findOne({
+        const {
             bandId,
-            isActive: true,
-        });
+        } = req.params;
+
+        const band =
+            await Band.findOne({
+                bandId,
+                isActive: true,
+            });
 
         if (!band) {
             return res.status(404).json({
                 success: false,
-                message: "Band not found",
+                message:
+                    "Band not found",
             });
         }
 
@@ -808,21 +843,21 @@ export const completeMonitoring = async (
             });
         }
 
-        session.status = "completed";
+        session.status =
+            "completed";
 
-        session.endedAt = new Date();
+        session.endedAt =
+            new Date();
 
         await session.save();
 
-        band.status = "Available";
+        band.status =
+            "Available";
 
         await band.save();
 
-        // --------------------------------------------------------
-        // Inform frontend that the backend session is complete.
-        // --------------------------------------------------------
-
-        const io = req.app.get("io");
+        const io =
+            req.app.get("io");
 
         if (io) {
             io.to(
@@ -830,12 +865,17 @@ export const completeMonitoring = async (
             ).emit(
                 "monitoringState",
                 {
-                    bandId: band.bandId,
-                    sessionId: session._id,
-                    patientId: session.patient,
+                    bandId:
+                        band.bandId,
+                    sessionId:
+                        session._id,
+                    patientId:
+                        session.patient,
                     active: false,
-                    mode: session.mode,
-                    state: "COMPLETED",
+                    mode:
+                        session.mode,
+                    state:
+                        "COMPLETED",
                     timestamp:
                         new Date().toISOString(),
                 }
@@ -847,8 +887,10 @@ export const completeMonitoring = async (
             message:
                 "Monitoring completed",
             data: {
-                sessionId: session._id,
-                bandId: band.bandId,
+                sessionId:
+                    session._id,
+                bandId:
+                    band.bandId,
                 active: false,
             },
         });

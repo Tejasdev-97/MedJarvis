@@ -10,7 +10,12 @@ const emergencyEventSchema = new mongoose.Schema(
 
         type: {
             type: String,
-            enum: ["fall", "seizure", "critical_vitals", "manual"],
+            enum: [
+                "fall",
+                "seizure",
+                "critical_vitals",
+                "manual",
+            ],
             required: true,
         },
 
@@ -44,7 +49,12 @@ const emergencyEventSchema = new mongoose.Schema(
 
         smsStatus: {
             type: String,
-            enum: ["not_sent", "accepted", "delivered", "failed"],
+            enum: [
+                "not_sent",
+                "accepted",
+                "delivered",
+                "failed",
+            ],
             default: "not_sent",
         },
 
@@ -60,12 +70,62 @@ const emergencyEventSchema = new mongoose.Schema(
             default: null,
         },
 
-        spo2: Number,
-        heartRate: Number,
-        temperature: Number,
-        accelMagnitude: Number,
-        gyroMagnitude: Number,
-        tilt: Number,
+        // ============================================================
+        // VITALS AT TIME OF EMERGENCY
+        // ============================================================
+
+        spo2: {
+            type: Number,
+            default: null,
+        },
+
+        heartRate: {
+            type: Number,
+            default: null,
+        },
+
+        hrvSDNN: {
+            type: Number,
+            default: null,
+        },
+
+        temperature: {
+            type: Number,
+            default: null,
+        },
+
+        // ============================================================
+        // FALL / MOTION INFORMATION
+        // ============================================================
+
+        accelMagnitude: {
+            type: Number,
+            default: null,
+        },
+
+        gyroMagnitude: {
+            type: Number,
+            default: null,
+        },
+
+        tilt: {
+            type: Number,
+            default: null,
+        },
+
+        fallEventConfidence: {
+            type: Number,
+            default: null,
+        },
+
+        eventConfidence: {
+            type: Number,
+            default: null,
+        },
+
+        // ============================================================
+        // LOCATION
+        // ============================================================
 
         latitude: {
             type: Number,
@@ -76,6 +136,10 @@ const emergencyEventSchema = new mongoose.Schema(
             type: Number,
             default: null,
         },
+
+        // ============================================================
+        // TIMESTAMPS
+        // ============================================================
 
         detectedAt: {
             type: Date,
@@ -92,4 +156,7 @@ const emergencyEventSchema = new mongoose.Schema(
     }
 );
 
-export default mongoose.model("EmergencyEvent", emergencyEventSchema);
+export default mongoose.model(
+    "EmergencyEvent",
+    emergencyEventSchema
+);

@@ -1,153 +1,235 @@
 import { useState } from "react";
+import { CheckCircle, UserPlus, Loader2 } from "lucide-react";
 import api from "../services/api";
 import FormInput from "../components/forms/FormInput";
 
+const initialForm = {
+    phone: "",
+    firstName: "",
+    lastName: "",
+    age: "",
+    gender: "",
+    bloodGroup: "",
+    village: "",
+};
+
 export default function RegisterPatientPage() {
+    const [form, setForm] = useState(initialForm);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
-    const [form, setForm] = useState({
-        phone: "",
-        firstName: "",
-        lastName: "",
-        age: "",
-        gender: "",
-        bloodGroup: "",
-        village: "",
-    });
+    function updateField(field, value) {
+        setForm((previous) => ({
+            ...previous,
+            [field]: value,
+        }));
+    }
 
-    async function registerPatient() {
+    async function registerPatient(e) {
+        e.preventDefault();
+
+        setError("");
+        setSuccess("");
+
+        if (!form.firstName.trim()) {
+            setError("First name is required.");
+            return;
+        }
+
+        if (!form.phone.trim()) {
+            setError("Phone number is required.");
+            return;
+        }
 
         try {
+            setLoading(true);
 
             const res = await api.post(
                 "/patients",
-                form
+                {
+                    ...form,
+                    firstName: form.firstName.trim(),
+                    lastName: form.lastName.trim(),
+                    phone: form.phone.trim(),
+                    village: form.village.trim(),
+                }
             );
 
-            alert(res.data.message);
+            setSuccess(
+                res.data?.message ||
+                "Patient registered successfully."
+            );
 
-            setForm({
-                phone: "",
-                firstName: "",
-                lastName: "",
-                age: "",
-                gender: "",
-                bloodGroup: "",
-                village: "",
-            });
-
+            setForm(initialForm);
         } catch (err) {
-
-            alert(
-                err.response?.data?.message || "Error"
+            console.error(
+                "Register patient error:",
+                err
             );
 
+            setError(
+                err.response?.data?.message ||
+                "Unable to register patient."
+            );
+        } finally {
+            setLoading(false);
         }
-
     }
 
     return (
+        <div className="max-w-4xl mx-auto">
 
-        <div className="bg-white rounded-2xl shadow p-8">
+            <div className="mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-[#D8F3DC] flex items-center justify-center">
+                        <UserPlus
+                            size={22}
+                            className="text-[#2D6A4F]"
+                        />
+                    </div>
 
-            <h1 className="text-3xl font-bold mb-6">
+                    <div>
+                        <h1 className="text-3xl font-bold">
+                            Register Patient
+                        </h1>
 
-                Register Patient
+                        <p className="text-[#4A4A4A] mt-1">
+                            Create a new MedJarvis patient profile.
+                        </p>
+                    </div>
+                </div>
+            </div>
 
-            </h1>
+            {error && (
+                <div className="mb-5 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3">
+                    {error}
+                </div>
+            )}
 
-            <form className="grid md:grid-cols-2 gap-5">
+            {success && (
+                <div className="mb-5 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 flex items-start gap-3">
+                    <CheckCircle
+                        size={20}
+                        className="mt-0.5 shrink-0"
+                    />
+                    <span>{success}</span>
+                </div>
+            )}
 
-                <FormInput
-                    label="First Name"
-                    value={form.firstName}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            firstName: e.target.value,
-                        })
-                    }
-                />
+            <form
+                onSubmit={registerPatient}
+                className="bg-white rounded-2xl shadow-sm border border-[#E8E0D5] p-6 md:p-8"
+            >
 
-                <FormInput
-                    label="Last Name"
-                    value={form.lastName}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            lastName: e.target.value,
-                        })
-                    }
-                />
+                <div className="grid md:grid-cols-2 gap-5">
 
-                <FormInput
-                    label="Phone Number"
-                    value={form.phone}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            phone: e.target.value,
-                        })
-                    }
-                />
+                    <FormInput
+                        label="First Name"
+                        value={form.firstName}
+                        onChange={(e) =>
+                            updateField(
+                                "firstName",
+                                e.target.value
+                            )
+                        }
+                    />
 
-                <FormInput
-                    label="Age"
-                    value={form.age}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            age: e.target.value,
-                        })
-                    }
-                />
+                    <FormInput
+                        label="Last Name"
+                        value={form.lastName}
+                        onChange={(e) =>
+                            updateField(
+                                "lastName",
+                                e.target.value
+                            )
+                        }
+                    />
 
-                <FormInput
-                    label="Gender"
-                    value={form.gender}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            gender: e.target.value,
-                        })
-                    }
-                />
+                    <FormInput
+                        label="Phone Number"
+                        value={form.phone}
+                        onChange={(e) =>
+                            updateField(
+                                "phone",
+                                e.target.value
+                            )
+                        }
+                    />
 
-                <FormInput
-                    label="Blood Group"
-                    value={form.bloodGroup}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            bloodGroup: e.target.value,
-                        })
-                    }
-                />
+                    <FormInput
+                        label="Age"
+                        value={form.age}
+                        onChange={(e) =>
+                            updateField(
+                                "age",
+                                e.target.value
+                            )
+                        }
+                    />
 
-                <FormInput
-                    label="Village"
-                    value={form.village}
-                    onChange={(e) =>
-                        setForm({
-                            ...form,
-                            village: e.target.value,
-                        })
-                    }
-                />
+                    <FormInput
+                        label="Gender"
+                        value={form.gender}
+                        onChange={(e) =>
+                            updateField(
+                                "gender",
+                                e.target.value
+                            )
+                        }
+                    />
+
+                    <FormInput
+                        label="Blood Group"
+                        value={form.bloodGroup}
+                        onChange={(e) =>
+                            updateField(
+                                "bloodGroup",
+                                e.target.value
+                            )
+                        }
+                    />
+
+                    <FormInput
+                        label="Village"
+                        value={form.village}
+                        onChange={(e) =>
+                            updateField(
+                                "village",
+                                e.target.value
+                            )
+                        }
+                    />
+
+                </div>
+
+                <div className="mt-8 flex justify-end">
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white px-7 py-3 rounded-xl flex items-center gap-2 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2
+                                    size={19}
+                                    className="animate-spin"
+                                />
+                                Registering...
+                            </>
+                        ) : (
+                            <>
+                                <UserPlus size={19} />
+                                Register Patient
+                            </>
+                        )}
+                    </button>
+
+                </div>
 
             </form>
 
-            <button
-                type="button"
-                onClick={registerPatient}
-                className="mt-8 bg-[#2D6A4F] text-white px-6 py-3 rounded-xl"
-            >
-
-                Register Patient
-
-            </button>
-
         </div>
-
     );
-
 }

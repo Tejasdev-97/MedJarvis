@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
-import SectionTitle from "../components/dashboard/SectionTitle";
+
 import StatCard from "../components/dashboard/StatCard";
 import QuickActions from "../components/dashboard/QuickActions";
 import RecentActivity from "../components/dashboard/RecentActivity";
@@ -11,119 +11,234 @@ import RoleBadge from "../components/dashboard/RoleBadge";
 import { dashboardConfig } from "../data/dashboardConfig";
 
 export default function DashboardPage() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
     const profile = JSON.parse(
         localStorage.getItem("profile") || "{}"
     );
 
+    const role = profile.role || "Patient";
+
     const config =
-        dashboardConfig[profile.role] ||
+        dashboardConfig[role] ||
         dashboardConfig.Patient;
 
-    const [stats, setStats] = useState(null);
+    useEffect(() => {
+        let mounted = true;
 
-useEffect(() => {
-    loadStats();
-}, []);
+        async function loadStats() {
+            try {
+                setLoading(true);
+                setError("");
 
-async function loadStats() {
-    try {
-        const res = await api.get("/dashboard/stats");
-        setStats(res.data.data);
-    } catch (err) {
-        console.log(err);
-    }
-}
+                const res = await api.get(
+                    "/dashboard/stats"
+                );
 
-    return (
+                if (mounted) {
+                    setStats(
+                        res.data?.data || null
+                    );
+                }
+            } catch (err) {
+                console.error(
+                    "Dashboard stats error:",
+                    err
+                );
 
-    <>
-
-        <DashboardHeader
-            title={`Welcome, ${profile.displayName}`}
-            subtitle={profile.role}
-        />
-
-        <RoleBadge role={profile.role}/>
-
-        <div className="grid lg:grid-cols-2 xl:grid-cols-4 gap-6">
-
-            {config.stats.map((item) => {
-
-    let value = item.value;
-
-    if (stats) {
-
-        switch (item.title) {
-
-            case "Users":
-                value = stats.totalUsers;
-                break;
-
-            case "Hospitals":
-                value = stats.totalHospitals;
-                break;
-
-            case "Doctors":
-                value = stats.totalDoctors;
-                break;
-
-            case "Health Workers":
-                value = stats.totalHealthWorkers;
-                break;
-
-            case "Patients":
-                value = stats.totalPatients;
-                break;
-
-            case "Critical":
-                value = stats.critical;
-                break;
-
-            case "Emergency":
-                value = stats.critical;
-                break;
-
-            default:
-                value = item.value;
-
+                if (mounted) {
+                    setError(
+                        err.response?.data?.message ||
+                        "Unable to load live dashboard statistics."
+                    );
+                }
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
+            }
         }
 
+        loadStats();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    function getStatValue(item) {
+        if (loading) {
+            return "…";
+        }
+
+        if (!stats) {
+            return "—";
+        }
+
+        switch (item.title) {
+            case "Users":
+                return stats.totalUsers ?? "—";
+
+            case "Hospitals":
+                return stats.totalHospitals ?? "—";
+
+            case "Doctors":
+                return stats.totalDoctors ?? "—";
+
+            case "Health Workers":
+                return stats.totalHealthWorkers ?? "—";
+
+            case "Ambulance Staff":
+                return stats.totalAmbulance ?? "—";
+
+            case "Managers":
+                return stats.totalManagers ?? "—";
+
+            case "Patients":
+                return stats.totalPatients ?? "—";
+
+            case "Active Patients":
+                return stats.activePatients ?? "—";
+
+            case "Healthy":
+                return stats.healthy ?? "—";
+
+            case "Observation":
+                return stats.observation ?? "—";
+
+            case "Critical":
+                return stats.critical ?? "—";
+
+            case "Emergency":
+                return stats.critical ?? "—";
+
+            case "Today's Registrations":
+                return stats.todayRegistrations ?? "—";
+
+            default:
+                // Never invent a live number.
+                return "—";
+        }
     }
 
     return (
+        <div className="space-y-8">
 
-        <StatCard
-            key={item.title}
-            title={item.title}
-            value={value}
-            subtitle=""
-            icon={item.icon}
-            color={item.color}
-        />
+            {/* =====================================================
+                HEADER
+            ====================================================== */}
 
+            <div className="flex flex-col gap-4">
+
+                <DashboardHeader
+                    title={`Welcome, ${profile.displayName || "User"
+                        }`}
+                    subtitle={role}
+                />
+
+                <div>
+                    <RoleBadge role={role} />
+                </div>
+
+            </div>
+
+
+            {/* =====================================================
+                ERROR
+            ====================================================== */}
+
+            {error && (
+                <div
+                    className="
+                        rounded-2xl
+                        border
+                        border-[#F4A261]
+                        bg-[#FFF8F1]
+                        px-5
+                        py-4
+                        text-[#7C2D12]
+                        font-medium
+                    "
+                >
+                    {error}
+                </div>
+            )}
+
+
+            {/* =====================================================
+                STATISTICS
+            ====================================================== */}
+
+            <section>
+
+                <div
+                    className="
+                        grid
+                        grid-cols-1
+                        sm:grid-cols-2
+                        xl:grid-cols-4
+                        gap-5
+                    "
+                >
+
+                    {config.stats.map((item) => (
+                        <StatCard
+                            key={item.title}
+                            title={item.title}
+                            value={getStatValue(item)}
+                            subtitle={
+                                loading
+                                    ? "Loading live data..."
+                                    : "Live system data"
+                            }
+                            icon={item.icon}
+                            color={item.color}
+                        />
+                    ))}
+
+                </div>
+
+            </section>
+
+
+            {/* =====================================================
+                ACTIONS + ACTIVITY
+            ====================================================== */}
+
+            <section
+                className="
+                    grid
+                    grid-cols-1
+                    xl:grid-cols-2
+                    gap-6
+                "
+            >
+
+                <QuickActions
+                    actions={config.actions}
+                />
+
+                <RecentActivity
+                    role={role}
+                />
+
+            </section>
+
+
+            {/* =====================================================
+                ALERTS
+            ====================================================== */}
+
+            <section>
+
+                <AlertsPanel
+                    role={role}
+                />
+
+            </section>
+
+        </div>
     );
-
-})}
-
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-6 mt-8">
-
-            <QuickActions actions={config.actions} />
-
-            <RecentActivity role={profile.role} />
-
-        </div>
-
-        <div className="mt-6">
-
-            <AlertsPanel role={profile.role} />
-
-        </div>
-
-    </>
-
-);
-
 }
